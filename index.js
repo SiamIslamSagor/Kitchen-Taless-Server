@@ -29,7 +29,7 @@ async function run() {
     ///////////   DATABASE   //////////
     ///////////////////////////////////
     const userCollection = client.db("KitchenTalesDB").collection("users");
-
+    const recipeCollection = client.db("KitchenTalesDB").collection("recipes");
     ///////////////////////////////////
     ///////////     API     //////////
     ///////////////////////////////////
@@ -71,7 +71,6 @@ async function run() {
     app.post("/users", async (req, res) => {
       // get user email form client side
       const user = req.body;
-      console.log(user);
       // create user email query
       const query = { email: user.email };
       // get user from DB
@@ -91,6 +90,14 @@ async function run() {
     // get all user
     app.get("/users", verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    ///////////     RECIPE     //////////
+
+    app.post("/add-recipe", async (req, res) => {
+      const recipe = req.body;
+      const result = await recipeCollection.insertOne(recipe);
       res.send(result);
     });
 
