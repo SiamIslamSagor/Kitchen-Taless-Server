@@ -95,11 +95,31 @@ async function run() {
 
     ///////////     RECIPE     //////////
 
-    app.post("/add-recipe", async (req, res) => {
+    app.post("/add-recipe", verifyToken, async (req, res) => {
       const recipe = req.body;
+      const creatorEmail = recipe.creatorEmail;
       const result = await recipeCollection.insertOne(recipe);
-      res.send(result);
+      const userUpdateResult = await userCollection.updateOne(
+        { email: creatorEmail },
+        { $inc: { coin: 1 } }
+      );
+      res.send({ recipeResult: result, userUpdateResult });
     });
+    /* 
+    app.post("/add-recipe", verifyToken, async (req, res) => {
+      const recipe = req.body;
+      const creatorEmail = recipe.creatorEmail;
+      // const user = await userCollection.findOne({ email: creatorEmail });
+      console.log(user);
+      const userRes = userCollection.updateOne({ email: creatorEmail }, {
+        $set: {
+          coin
+        }
+      });
+      // console.log();
+      // const result = await recipeCollection.insertOne(recipe);
+      // res.send(result);
+    }); */
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
