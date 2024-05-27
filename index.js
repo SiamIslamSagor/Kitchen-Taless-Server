@@ -172,6 +172,12 @@ async function run() {
       res.send({ recipes: recipes, pagination: pagination });
     });
 
+    app.get("/recipe/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await recipeCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
     app.patch("/update-recipe/:id", async (req, res) => {
       const id = req.params.id;
       const { creatorEmail, userEmail } = req.body;
