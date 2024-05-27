@@ -87,9 +87,44 @@ async function run() {
       res.send(result);
     });
 
-    // get all user
+    // get all users
     app.get("/users", verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get user
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email });
+      res.send(result);
+    });
+
+    app.patch("/update-user/coins/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const amount = parseInt(req.query.amount);
+      console.log(amount);
+
+      const user = await userCollection.findOne({ email: email });
+
+      if (!user) {
+        return res.status(403).send({ message: "User not found" });
+      }
+
+      // Check if the user has enough coins
+      if (user.coin < 10 && amount < 0) {
+        return res.status(400).send({ message: "Not enough coins" });
+      }
+      // Update the user's coins based on the provided amount
+      const updatedUser = await userCollection.updateOne(
+        { email: email },
+        { $inc: { coin: amount } }
+      );
+
+      const result = {
+        message: `Coins increased by ${amount} successfully`,
+        updatedUser,
+      };
       res.send(result);
     });
 
@@ -105,24 +140,77 @@ async function run() {
       );
       res.send({ recipeResult: result, userUpdateResult });
     });
-    /* 
-    app.post("/add-recipe", verifyToken, async (req, res) => {
-      const recipe = req.body;
-      const creatorEmail = recipe.creatorEmail;
-      // const user = await userCollection.findOne({ email: creatorEmail });
-      console.log(user);
-      const userRes = userCollection.updateOne({ email: creatorEmail }, {
+
+    app.get("/all-recipe", async (req, res) => {
+      const limit = parseInt(req.query.limit) || 10;
+      const category = req.query.category;
+      const country = req.query.country;
+      const search = req.query.search;
+
+      const filter = {};
+      if (category) filter.category = category;
+      if (country) filter.country = country;
+      if (search) filter.recipe_name = { $regex: search, $options: "i" };
+
+      console.log(filter);
+
+      const recipes = await recipeCollection
+        .find(filter)
+        .limit(limit)
+        .toArray();
+
+      const totalRecipes = await recipeCollection.countDocuments(filter);
+
+      const totalPages = Math.ceil(totalRecipes / limit);
+
+      const pagination = {
+        totalItems: totalRecipes,
+        totalPages: totalPages,
+        itemsPerPage: limit,
+      };
+
+      res.send({ recipes: recipes, pagination: pagination });
+    });
+
+    app.patch("/update-recipe/:id", async (req, res) => {
+      const id = req.params.id;
+      const { creatorEmail, userEmail } = req.body;
+      console.log(id, creatorEmail, userEmail);
+
+      const creatorUpdateResult = await userCollection.updateOne(
+        { email: creatorEmail },
+        { $inc: { coin: 1 } }
+      );
+      const filter = { _id: new ObjectId(id) };
+
+      const recipe = await recipeCollection.findOne(filter);
+      console.log(recipe.purchased_by);
+
+      const updatedRecipe = {
         $set: {
-          coin
-        }
-      });
-      // console.log();
-      // const result = await recipeCollection.insertOne(recipe);
-      // res.send(result);
+          purchased_by: [...recipe.purchased_by, userEmail],
+        },
+        $inc: {
+          watchCount: 1,
+        },
+      };
+      console.log(updatedRecipe);
+
+      const recipeUpdateResult = await recipeCollection.updateOne(
+        filter,
+        updatedRecipe
+      );
+
+      res.send({ recipeUpdateResult, creatorUpdateResult });
+    });
+
+    /*     app.get("/all-recipe", async (req, res) => {
+      const result = await recipeCollection.find().toArray();
+      res.send(result);
     }); */
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
